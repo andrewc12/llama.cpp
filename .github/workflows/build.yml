@@ -914,7 +914,11 @@ jobs:
       - name: Install curl
         id: install_curl
         run: |
-          choco install curl
+          git clone https://github.com/Microsoft/vcpkg.git
+          cd vcpkg
+          ./bootstrap-vcpkg.sh
+          ./vcpkg integrate install
+          vcpkg install curl[tool]
 
       - name: Build
         id: cmake_build
