@@ -646,7 +646,7 @@ jobs:
       matrix:
         include:
           - build: 'noavx-x64'
-            defines: '-DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_RPC=ON -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF'
+            defines: '-DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_RPC=ON -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DLLAMA_CURL=ON'
           - build: 'avx2-x64'
             defines: '-DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_RPC=ON'
           - build: 'avx-x64'
@@ -920,7 +920,8 @@ jobs:
             -DLLAMA_BUILD_SERVER=ON ^
             -DGGML_NATIVE=OFF ^
             -DGGML_CUDA=ON ^
-            -DGGML_RPC=ON
+            -DGGML_RPC=ON ^
+            -DLLAMA_CURL=ON
           set /A NINJA_JOBS=%NUMBER_OF_PROCESSORS%-1
           cmake --build build --config Release -j %NINJA_JOBS% -t ggml
           cmake --build build --config Release
