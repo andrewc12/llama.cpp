@@ -646,7 +646,7 @@ jobs:
       matrix:
         include:
           - build: 'noavx-x64'
-            defines: '-DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_RPC=ON -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DLLAMA_CURL=ON'
+            defines: '-DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_RPC=ON -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF'
           - build: 'avx2-x64'
             defines: '-DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_RPC=ON'
           - build: 'avx-x64'
@@ -910,6 +910,11 @@ jobs:
         id: install_ninja
         run: |
           choco install ninja
+          
+      - name: Install curl
+        id: install_curl
+        run: |
+          choco install curl
 
       - name: Build
         id: cmake_build
