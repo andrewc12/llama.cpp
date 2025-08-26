@@ -91,17 +91,6 @@ jobs:
       OPENBLAS_VERSION: 0.3.23
       VULKAN_VERSION: 1.4.313.2
 
-    strategy:
-      matrix:
-        include:
-          - backend: 'vulkan'
-            arch: 'x64'
-            defines: '-DGGML_VULKAN=ON'
-            target: 'ggml-vulkan'
-          - backend: 'opencl-adreno'
-            arch: 'arm64'
-            defines: '-G "Ninja Multi-Config" -D CMAKE_TOOLCHAIN_FILE=cmake/arm64-windows-llvm.cmake -DCMAKE_PREFIX_PATH="$env:RUNNER_TEMP/opencl-arm64-release" -DGGML_OPENCL=ON -DGGML_OPENCL_USE_ADRENO_KERNELS=ON'
-            target: 'ggml-opencl'
 
     steps:
       - name: Clone
@@ -111,13 +100,12 @@ jobs:
       - name: ccache
         uses: ggml-org/ccache-action@v1.2.16
         with:
-          key: windows-latest-cmake-${{ matrix.backend }}-${{ matrix.arch }}
+          key: windows-latest-cmake-vulkan-x64
           variant: ccache
           evict-old-files: 1d
 
       - name: Install Vulkan SDK
         id: get_vulkan
-        if: ${{ matrix.backend == 'vulkan' }}
         run: |
           curl.exe -o $env:RUNNER_TEMP/VulkanSDK-Installer.exe -L "https://sdk.lunarg.com/sdk/download/${env:VULKAN_VERSION}/windows/vulkansdk-windows-X64-${env:VULKAN_VERSION}.exe"
           & "$env:RUNNER_TEMP\VulkanSDK-Installer.exe" --accept-licenses --default-answer --confirm-command install
@@ -129,49 +117,25 @@ jobs:
         run: |
           choco install ninja
 
-      - name: Install OpenCL Headers and Libs
-        id: install_opencl
-        if: ${{ matrix.backend == 'opencl-adreno' && matrix.arch == 'arm64' }}
-        run: |
-          git clone https://github.com/KhronosGroup/OpenCL-Headers
-          cd OpenCL-Headers
-          cmake -B build `
-            -DBUILD_TESTING=OFF `
-            -DOPENCL_HEADERS_BUILD_TESTING=OFF `
-            -DOPENCL_HEADERS_BUILD_CXX_TESTS=OFF `
-            -DCMAKE_INSTALL_PREFIX="$env:RUNNER_TEMP/opencl-arm64-release"
-          cmake --build build --target install
-          git clone https://github.com/KhronosGroup/OpenCL-ICD-Loader
-          cd OpenCL-ICD-Loader
-          cmake -B build-arm64-release `
-            -A arm64 `
-            -DCMAKE_PREFIX_PATH="$env:RUNNER_TEMP/opencl-arm64-release" `
-            -DCMAKE_INSTALL_PREFIX="$env:RUNNER_TEMP/opencl-arm64-release"
-          cmake --build build-arm64-release --target install --config release
-
       - name: Build
         id: cmake_build
         run: |
-          cmake -S . -B build ${{ matrix.defines }} -DGGML_NATIVE=OFF -DGGML_CPU=OFF -DGGML_BACKEND_DL=ON -DLLAMA_CURL=OFF
-          cmake --build build --config Release --target ${{ matrix.target }}
+          cmake -S . -B build -DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DGGML_CPU=OFF -DGGML_BACKEND_DL=ON -DLLAMA_CURL=OFF
+          cmake --build build --config Release --target ggml-vulkan
 
       - name: Pack artifacts
         id: pack_artifacts
         run: |
-          7z a llama-bin-win-${{ matrix.backend }}-${{ matrix.arch }}.zip .\build\bin\Release\${{ matrix.target }}.dll
+          7z a llama-bin-win-vulkan-x64.zip .\build\bin\Release\ggml-vulkan.dll
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          path: llama-bin-win-${{ matrix.backend }}-${{ matrix.arch }}.zip
-          name: llama-bin-win-${{ matrix.backend }}-${{ matrix.arch }}.zip
+          path: llama-bin-win-vulkan-x64.zip
+          name: llama-bin-win-vulkan-x64.zip
 
   windows-cuda:
     runs-on: windows-2022
-
-    strategy:
-      matrix:
-        cuda: ['12.4']
 
     steps:
       - name: Clone
@@ -181,14 +145,14 @@ jobs:
       - name: Install ccache
         uses: ggml-org/ccache-action@v1.2.16
         with:
-          key: windows-cuda-${{ matrix.cuda }}
+          key: windows-cuda-12.4
           variant: ccache
           evict-old-files: 1d
 
       - name: Install Cuda Toolkit
         uses: ./.github/actions/windows-setup-cuda
         with:
-          cuda_version: ${{ matrix.cuda }}
+          cuda_version: 12.4
 
       - name: Install Ninja
         id: install_ninja
@@ -212,13 +176,13 @@ jobs:
       - name: Pack artifacts
         id: pack_artifacts
         run: |
-          7z a llama-bin-win-cuda-${{ matrix.cuda }}-x64.zip .\build\bin\Release\ggml-cuda.dll
+          7z a llama-bin-win-cuda-12.4-x64.zip .\build\bin\Release\ggml-cuda.dll
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          path: llama-bin-win-cuda-${{ matrix.cuda }}-x64.zip
-          name: llama-bin-win-cuda-${{ matrix.cuda }}-x64.zip
+          path: llama-bin-win-cuda-12.4-x64.zip
+          name: llama-bin-win-cuda-12.4-x64.zip
 
       - name: Copy and pack Cuda runtime
         run: |
@@ -226,13 +190,13 @@ jobs:
           $dst='.\build\bin\cudart\'
           robocopy "${{env.CUDA_PATH}}\bin" $dst cudart64_*.dll cublas64_*.dll cublasLt64_*.dll
           robocopy "${{env.CUDA_PATH}}\lib" $dst cudart64_*.dll cublas64_*.dll cublasLt64_*.dll
-          7z a cudart-llama-bin-win-cuda-${{ matrix.cuda }}-x64.zip $dst\*
+          7z a cudart-llama-bin-win-cuda-12.4-x64.zip $dst\*
 
       - name: Upload Cuda runtime
         uses: actions/upload-artifact@v4
         with:
-          path: cudart-llama-bin-win-cuda-${{ matrix.cuda }}-x64.zip
-          name: cudart-llama-bin-win-cuda-${{ matrix.cuda }}-x64.zip
+          path: cudart-llama-bin-win-cuda-12.4-x64.zip
+          name: cudart-llama-bin-win-cuda-12.4-x64.zip
 
   windows-sycl:
     runs-on: windows-2022
